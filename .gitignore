@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+backend/dist/
+
+# Angular cache
+.angular/
+
+# Database
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# Uploads
+backend/uploads/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

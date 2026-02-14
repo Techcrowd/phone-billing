@@ -1,0 +1,48 @@
+<div class="min-h-screen bg-gray-50">
+  <!-- Header (only when logged in) -->
+  @if (auth.user()) {
+    <header class="bg-gradient-to-r from-pink-600 to-pink-500 text-white shadow-lg">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-14">
+          <a routerLink="/" class="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+            <div class="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-lg font-bold">T</div>
+            <span class="text-lg font-semibold tracking-tight">Phone Bills</span>
+          </a>
+          <nav class="flex gap-0.5">
+            <a routerLink="/dashboard" routerLinkActive="bg-white/20"
+               class="px-3.5 py-1.5 rounded-md text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-all">
+              Dashboard
+            </a>
+            <a routerLink="/invoices" routerLinkActive="bg-white/20"
+               class="px-3.5 py-1.5 rounded-md text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-all">
+              Faktury
+            </a>
+            <a routerLink="/groups" routerLinkActive="bg-white/20"
+               class="px-3.5 py-1.5 rounded-md text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-all">
+              Skupiny
+            </a>
+            <a routerLink="/payments" routerLinkActive="bg-white/20"
+               class="px-3.5 py-1.5 rounded-md text-sm font-medium text-white/80 hover:text-white hover:bg-white/10 transition-all">
+              Platby
+            </a>
+          </nav>
+          <div class="flex items-center gap-3">
+            @if (auth.user()?.picture) {
+              <img [src]="auth.user()!.picture" class="w-7 h-7 rounded-full" referrerpolicy="no-referrer" />
+            }
+            <span class="text-xs text-white/70 hidden sm:inline">{{ auth.user()?.email }}</span>
+            <button (click)="logout()"
+                    class="text-xs text-white/60 hover:text-white transition-colors ml-1">
+              Odhlásit
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+  }
+
+  <!-- Content -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <router-outlet />
+  </main>
+</div>

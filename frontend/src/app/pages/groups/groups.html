@@ -1,0 +1,117 @@
+<div class="flex items-center justify-between mb-5">
+  <h2 class="text-xl font-bold text-gray-900">Skupiny</h2>
+</div>
+
+<!-- Unassigned services -->
+@if (unassigned().length > 0) {
+  <div class="bg-amber-50 rounded-xl border border-amber-200/60 p-5 mb-6">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-2 h-2 rounded-full bg-amber-400"></div>
+      <h3 class="text-sm font-semibold text-amber-700">Nepřiřazené služby ({{ unassigned().length }})</h3>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      @for (svc of unassigned(); track svc.id) {
+        <div class="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-200/50 shadow-sm">
+          <div class="min-w-0 mr-2">
+            <code class="text-xs font-mono font-medium text-gray-700">{{ formatIdentifier(svc.identifier) }}</code>
+            @if (svc.label) {
+              <p class="text-[11px] text-gray-400 truncate">{{ svc.label }}</p>
+            }
+          </div>
+          <select (change)="assignToGroup(svc, $event)"
+                  class="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-600 cursor-pointer shrink-0">
+            <option value="">Přiřadit...</option>
+            @for (g of groups(); track g.id) {
+              <option [value]="g.id">{{ g.name }}</option>
+            }
+          </select>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- New group -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+  <div class="flex gap-3 items-end">
+    <div class="flex-1">
+      <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Název skupiny</label>
+      <input type="text" [(ngModel)]="newGroupName" placeholder="např. Mašínovi"
+             class="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-pink-500 focus:border-pink-500 transition-colors"
+             (keyup.enter)="createGroup()" />
+    </div>
+    <div class="flex-1">
+      <label class="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Poznámka</label>
+      <input type="text" [(ngModel)]="newGroupNote" placeholder="volitelné"
+             class="block w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+    </div>
+    <button (click)="createGroup()" [disabled]="!newGroupName.trim()"
+            class="px-5 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-40 text-sm font-medium transition-colors whitespace-nowrap">
+      Vytvořit
+    </button>
+  </div>
+</div>
+
+<!-- Groups -->
+@for (group of groups(); track group.id) {
+  <div class="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-100">
+      @if (editingGroup() === group.id) {
+        <div class="flex gap-2 items-center flex-1 mr-3">
+          <input type="text" [(ngModel)]="editName" class="flex-1 px-2 py-1 border border-gray-200 rounded-md text-sm" />
+          <input type="text" [(ngModel)]="editNote" placeholder="Poznámka" class="flex-1 px-2 py-1 border border-gray-200 rounded-md text-sm" />
+          <button (click)="saveGroup(group)" class="text-emerald-600 hover:text-emerald-700 text-xs font-medium">Uložit</button>
+          <button (click)="editingGroup.set(null)" class="text-gray-400 hover:text-gray-600 text-xs">Zrušit</button>
+        </div>
+      } @else {
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-pink-400"></div>
+          <span class="font-semibold text-sm text-gray-800">{{ group.name }}</span>
+          @if (group.note) {
+            <span class="text-xs text-gray-400">&middot; {{ group.note }}</span>
+          }
+          <span class="text-xs text-gray-300">{{ group.services.length }} služeb</span>
+        </div>
+        <div class="flex gap-3">
+          <button (click)="startEditGroup(group)" class="text-xs text-gray-400 hover:text-pink-600 transition-colors">Upravit</button>
+          <button (click)="deleteGroup(group)" class="text-xs text-gray-400 hover:text-red-500 transition-colors">Smazat</button>
+        </div>
+      }
+    </div>
+    @for (svc of group.services; track svc.id) {
+      <div class="flex items-center justify-between px-5 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <code class="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded font-mono shrink-0">{{ formatIdentifier(svc.identifier) }}</code>
+          @if (editingLabel() === svc.id) {
+            <div class="flex items-center gap-1.5 flex-1">
+              <input type="text" [(ngModel)]="editLabel" placeholder="Popis služby..."
+                     class="flex-1 px-2 py-0.5 border border-pink-300 rounded text-sm focus:ring-pink-500 focus:border-pink-500"
+                     (keyup.enter)="saveLabel(svc)" (keyup.escape)="cancelEditLabel()" />
+              <button (click)="saveLabel(svc)" class="text-xs text-emerald-600 hover:text-emerald-700 font-medium">OK</button>
+              <button (click)="cancelEditLabel()" class="text-xs text-gray-400 hover:text-gray-600">×</button>
+            </div>
+          } @else {
+            <button (click)="startEditLabel(svc)"
+                    class="text-sm truncate text-left transition-colors"
+                    [class.text-gray-500]="svc.label"
+                    [class.text-gray-300]="!svc.label"
+                    [class.hover:text-pink-600]="true">
+              {{ svc.label || 'Přidat popis...' }}
+            </button>
+          }
+          @if (svc.type !== 'phone') {
+            <span class="text-[10px] font-medium text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded uppercase shrink-0">{{ svc.type }}</span>
+          }
+        </div>
+        <button (click)="removeService(svc)" class="text-xs text-gray-300 hover:text-red-500 transition-colors shrink-0 ml-3">Odebrat</button>
+      </div>
+    }
+    @if (group.services.length === 0) {
+      <div class="px-5 py-4 text-sm text-gray-300 text-center">Přiřaďte služby z horního seznamu</div>
+    }
+  </div>
+}
+
+@if (groups().length === 0 && unassigned().length === 0) {
+  <div class="text-center py-16 text-gray-400">Nahrajte fakturu, aby se zobrazily služby.</div>
+}
