@@ -1,0 +1,6 @@
+**/node_modules
+**/dist
+**/.angular
+backend/uploads
+backend/database.sqlite*
+.git

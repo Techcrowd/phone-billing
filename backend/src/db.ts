@@ -2,9 +2,24 @@ import pg from 'pg';
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://phonebills:phonebills@localhost:5432/phonebills',
+  connectionTimeoutMillis: 10000,
 });
 
-export async function initDB() {
+export async function initDB(retries = 10, delay = 3000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await pool.query('SELECT 1');
+      console.log('Connected to PostgreSQL');
+      break;
+    } catch (e: any) {
+      if (i < retries - 1) {
+        console.log(`Waiting for PostgreSQL... (${i + 1}/${retries}): ${e.message}`);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        throw e;
+      }
+    }
+  }
   await pool.query(`
     CREATE TABLE IF NOT EXISTS "groups" (
       id SERIAL PRIMARY KEY,

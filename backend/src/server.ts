@@ -34,10 +34,17 @@ app.use('/api/invoices', invoicesRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/services', servicesRouter);
 
+// Serve frontend (production: built Angular app in ../public)
+const publicDir = path.join(__dirname, '..', 'public');
+app.use(express.static(publicDir));
+app.get('/{*path}', (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+
 // Initialize DB then start
 initDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`Phone Bills API running on http://localhost:${PORT}`);
+  app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`Phone Bills API running on http://0.0.0.0:${PORT}`);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

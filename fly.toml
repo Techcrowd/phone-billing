@@ -1,4 +1,4 @@
-app = 'phone-bills-api'
+app = 'phone-bills-tc'
 primary_region = 'fra'
 
 [build]
