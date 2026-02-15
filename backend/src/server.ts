@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDB } from './db.js';
@@ -74,9 +75,14 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 // Serve frontend (production: built Angular app in ../public)
 const publicDir = path.join(__dirname, '..', 'public');
+const indexHtml = path.join(publicDir, 'index.html');
 app.use(express.static(publicDir));
 app.get('/{*path}', (req, res) => {
-  res.sendFile(path.join(publicDir, 'index.html'));
+  if (fs.existsSync(indexHtml)) {
+    res.sendFile(indexHtml);
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
 });
 
 // Initialize DB then start (skip in test environment)
