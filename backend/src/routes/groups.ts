@@ -1,5 +1,17 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import pool from '../db.js';
+
+// FINDING-009: Input validation schemas
+const createGroupSchema = z.object({
+  name: z.string().min(1).max(255),
+  note: z.string().max(1000).optional()
+});
+
+const updateGroupSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  note: z.string().max(1000).nullable().optional()
+});
 
 const router = Router();
 
@@ -25,8 +37,11 @@ router.get('/', async (req, res) => {
 
 // POST /api/groups
 router.post('/', async (req, res) => {
-  const { name, note } = req.body;
-  if (!name) return res.status(400).json({ error: 'Jmeno skupiny je povinne' });
+  const parsed = createGroupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.message });
+  }
+  const { name, note } = parsed.data;
 
   try {
     const { rows } = await pool.query(
@@ -44,7 +59,11 @@ router.post('/', async (req, res) => {
 
 // PUT /api/groups/:id
 router.put('/:id', async (req, res) => {
-  const { name, note } = req.body;
+  const parsed = updateGroupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.message });
+  }
+  const { name, note } = parsed.data;
   const { id } = req.params;
 
   try {

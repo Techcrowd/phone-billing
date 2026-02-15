@@ -3,6 +3,7 @@ import {
   OnInit,
   inject,
   signal,
+  computed,
   DestroyRef,
   ChangeDetectionStrategy,
 } from '@angular/core';
@@ -32,6 +33,7 @@ export class PaymentsPage implements OnInit {
   totalPaidNoVat = signal(0);
   totalUnpaid = signal(0);
   totalUnpaidNoVat = signal(0);
+  hasUnpaid = computed(() => this.payments().some((p) => !p.is_paid));
 
   ngOnInit() {
     this.api

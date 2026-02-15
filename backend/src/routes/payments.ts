@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import fs from 'fs';
 import pool from '../db.js';
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
@@ -166,8 +167,11 @@ router.get('/export', async (req, res) => {
   const total = payments.reduce((s: number, p: any) => s + p.amount, 0);
   const totalNoVat = payments.reduce((s: number, p: any) => s + p.amount_without_vat, 0);
 
-  // SPAYD QR code
-  const iban = process.env.PAYMENT_IBAN || 'CZ3908000000002112251153';
+  // FINDING-001: No hardcoded IBAN — require env variable
+  const iban = process.env.PAYMENT_IBAN;
+  if (!iban) {
+    return res.status(500).json({ error: 'PAYMENT_IBAN není nakonfigurován' });
+  }
   const msg = period ? `Vyuctovani telefonu ${period}` : 'Vyuctovani telefonu';
   const spayd = `SPD*1.0*ACC:${iban}*AM:${total.toFixed(2)}*CC:CZK*MSG:${msg}`;
   const qrDataUrl = await QRCode.toDataURL(spayd, { width: 200, margin: 1 });
@@ -182,9 +186,12 @@ router.get('/export', async (req, res) => {
   };
   const fmtId = (id: string) => /^\d{9}$/.test(id) ? `${id.slice(0,3)} ${id.slice(3,6)} ${id.slice(6)}` : id;
 
-  // Font path
-  const fontRegular = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
-  const fontBold = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf';
+  // Font path — Linux (Docker) vs macOS
+  const linuxFont = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
+  const macFont = '/System/Library/Fonts/Supplemental/Arial.ttf';
+  const macFontBold = '/System/Library/Fonts/Supplemental/Arial Bold.ttf';
+  const fontRegular = fs.existsSync(linuxFont) ? linuxFont : macFont;
+  const fontBold = fs.existsSync(linuxFont) ? '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' : macFontBold;
 
   // Build PDF
   const doc = new PDFDocument({ size: 'A4', margin: 50 });

@@ -22,7 +22,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
       audience: CLIENT_ID,
     });
     const payload = ticket.getPayload();
-    if (!payload?.email || payload.email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
+    if (!payload?.email || payload.email.toLowerCase() !== ALLOWED_EMAIL!.toLowerCase()) {
       return res.status(403).json({ error: 'Forbidden — přístup povolen pouze pro ' + ALLOWED_EMAIL });
     }
     next();

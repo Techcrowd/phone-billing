@@ -1,5 +1,12 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import pool from '../db.js';
+
+// FINDING-009: Input validation schema
+const updateServiceSchema = z.object({
+  group_id: z.number().int().positive().nullable().optional(),
+  label: z.string().max(255).nullable().optional()
+});
 
 const router = Router();
 
@@ -16,7 +23,11 @@ router.get('/', async (req, res) => {
 
 // PUT /api/services/:id
 router.put('/:id', async (req, res) => {
-  const { group_id, label } = req.body;
+  const parsed = updateServiceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.message });
+  }
+  const { group_id, label } = parsed.data;
   const { id } = req.params;
 
   const { rows: existing } = await pool.query('SELECT * FROM services WHERE id = $1', [id]);

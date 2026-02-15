@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDB } from './db.js';
@@ -15,22 +17,47 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 4250;
 
-app.use(cors({ exposedHeaders: ['Content-Disposition'] }));
+// FINDING-005: Security headers (X-Powered-By, HSTS, X-Frame-Options, CSP, etc.)
+// crossOriginOpenerPolicy disabled — Google Sign-In popup requires unrestricted
+// window.postMessage between popup and parent (Google's own COOP is same-origin)
+app.use(helmet({
+  crossOriginOpenerPolicy: false,
+  contentSecurityPolicy: false
+}));
+
+// FINDING-002: Restrict CORS to frontend origin only (no wildcard)
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:4251',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Disposition']
+}));
+
 app.use(express.json());
 
-// Serve uploaded PDFs
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// FINDING-008: Rate limiting on API routes
+app.use('/api/', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Příliš mnoho požadavků, zkuste to později' }
+}));
+
+// FINDING-004: Uploaded PDFs require authentication
+app.use('/uploads', authMiddleware, express.static(path.join(__dirname, '..', 'uploads')));
 
 // Public endpoints (no auth)
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/api/config', (req, res) => {
+app.get('/api/config', (_req, res) => {
   res.json({ googleClientId: process.env.GOOGLE_CLIENT_ID || '' });
 });
 
-// Auth middleware for all API routes
+// FINDING-003: Authorization is handled at auth level — single-user app (ALLOWED_EMAIL).
+// If multi-user support is added in the future, implement RBAC/ownership model.
 app.use('/api', authMiddleware);
 
 // Routes

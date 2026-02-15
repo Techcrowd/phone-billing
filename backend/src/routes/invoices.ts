@@ -104,6 +104,13 @@ async function parseWithFallback(filePath: string): Promise<ParseResult> {
 router.post('/upload', upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Zadny soubor nebyl nahran' });
 
+  // FINDING-007: Validate PDF magic number (not just MIME type)
+  const fileBuffer = fs.readFileSync(req.file.path);
+  if (fileBuffer.toString('ascii', 0, 5) !== '%PDF-') {
+    fs.unlinkSync(req.file.path);
+    return res.status(400).json({ error: 'Soubor není platný PDF' });
+  }
+
   const client = await pool.connect();
   try {
     const parseResult = await parseWithFallback(req.file.path);
@@ -227,7 +234,8 @@ router.delete('/:id', async (req, res) => {
   if (!invoice) return res.status(404).json({ error: 'Faktura nenalezena' });
 
   if (invoice.file_path) {
-    const filePath = path.join(UPLOAD_DIR, invoice.file_path);
+    // FINDING-006: Prevent path traversal by using basename only
+    const filePath = path.join(UPLOAD_DIR, path.basename(invoice.file_path));
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 

@@ -21,7 +21,7 @@
         <option [value]="inv.period">{{ formatPeriod(inv.period) }}</option>
       }
     </select>
-    @if (payments().length > 0) {
+    @if (hasUnpaid()) {
       <button
         (click)="exportPdf()"
         class="col-span-2 sm:col-span-1 px-4 py-2 sm:py-1.5 bg-pink-600 text-white rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors flex items-center justify-center gap-1.5"
