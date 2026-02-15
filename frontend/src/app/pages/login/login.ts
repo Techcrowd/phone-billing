@@ -1,20 +1,19 @@
 import { Component, OnInit, inject, signal, ChangeDetectionStrategy, NgZone } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Google Identity Services global
 declare const google: any;
-
-const CLIENT_ID = '971484727968-574ubh7lhkm02tb35fcje7btne3hu8qp.apps.googleusercontent.com';
 
 @Component({
   selector: 'app-login',
-  standalone: true,
-  imports: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './login.html'
+  templateUrl: './login.html',
 })
 export class LoginPage implements OnInit {
   private auth = inject(AuthService);
+  private http = inject(HttpClient);
   private router = inject(Router);
   private zone = inject(NgZone);
   status = signal('');
@@ -25,10 +24,17 @@ export class LoginPage implements OnInit {
       return;
     }
 
-    const initGoogle = () => {
+    this.http.get<{ googleClientId: string }>('/api/config').subscribe({
+      next: (config) => this.initGoogleSignIn(config.googleClientId),
+      error: () => this.status.set('Nepodařilo se načíst konfiguraci'),
+    });
+  }
+
+  private initGoogleSignIn(clientId: string) {
+    const init = () => {
       google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: (response: any) => {
+        client_id: clientId,
+        callback: (response: { credential?: string }) => {
           this.zone.run(() => {
             if (response.credential) {
               this.auth.login(response.credential);
@@ -41,19 +47,22 @@ export class LoginPage implements OnInit {
         },
         ux_mode: 'popup',
       });
-      google.accounts.id.renderButton(
-        document.getElementById('google-signin-btn')!,
-        { theme: 'outline', size: 'large', width: 300, text: 'signin_with', locale: 'cs' }
-      );
+      google.accounts.id.renderButton(document.getElementById('google-signin-btn')!, {
+        theme: 'outline',
+        size: 'large',
+        width: 300,
+        text: 'signin_with',
+        locale: 'cs',
+      });
     };
 
     if (typeof google !== 'undefined' && google.accounts) {
-      initGoogle();
+      init();
     } else {
       const interval = setInterval(() => {
         if (typeof google !== 'undefined' && google.accounts) {
           clearInterval(interval);
-          initGoogle();
+          init();
         }
       }, 100);
       setTimeout(() => clearInterval(interval), 10000);

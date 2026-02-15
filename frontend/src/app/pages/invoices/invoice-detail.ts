@@ -1,4 +1,12 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  DestroyRef,
+  ChangeDetectionStrategy,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -7,15 +15,15 @@ import { InvoiceDetail } from '../../models/models';
 
 @Component({
   selector: 'app-invoice-detail',
-  standalone: true,
   imports: [RouterLink, CurrencyPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './invoice-detail.html'
+  templateUrl: './invoice-detail.html',
 })
 export class InvoiceDetailPage implements OnInit {
   private api = inject(ApiService);
   private route = inject(ActivatedRoute);
   private sanitizer = inject(DomSanitizer);
+  private destroyRef = inject(DestroyRef);
   invoice = signal<InvoiceDetail | null>(null);
   activeTab = signal<'breakdown' | 'pdf'>('breakdown');
   pdfUrl = signal<SafeResourceUrl | null>(null);
@@ -34,18 +42,35 @@ export class InvoiceDetailPage implements OnInit {
   }
 
   loadInvoice(id: number) {
-    this.api.getInvoice(id).subscribe(inv => {
-      this.invoice.set(inv);
-      if (inv.file_path) {
-        this.pdfUrl.set(
-          this.sanitizer.bypassSecurityTrustResourceUrl(`/uploads/${inv.file_path}`)
-        );
-      }
-    });
+    this.api
+      .getInvoice(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((inv) => {
+        this.invoice.set(inv);
+        if (inv.file_path) {
+          this.pdfUrl.set(
+            this.sanitizer.bypassSecurityTrustResourceUrl(`/uploads/${inv.file_path}`),
+          );
+        }
+      });
   }
 
   formatPeriod(p: string) {
-    const months = ['', 'Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec'];
+    const months = [
+      '',
+      'Leden',
+      'Únor',
+      'Březen',
+      'Duben',
+      'Květen',
+      'Červen',
+      'Červenec',
+      'Srpen',
+      'Září',
+      'Říjen',
+      'Listopad',
+      'Prosinec',
+    ];
     const [y, m] = p.split('-');
     return `${months[parseInt(m)]} ${y}`;
   }
@@ -58,10 +83,13 @@ export class InvoiceDetailPage implements OnInit {
   }
 
   togglePayment(paymentId: number, isPaid: boolean) {
-    this.api.togglePayment(paymentId, isPaid).subscribe(() => {
-      const inv = this.invoice();
-      if (inv) this.loadInvoice(inv.id);
-    });
+    this.api
+      .togglePayment(paymentId, isPaid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        const inv = this.invoice();
+        if (inv) this.loadInvoice(inv.id);
+      });
   }
 
   generatePayments() {
@@ -69,12 +97,15 @@ export class InvoiceDetailPage implements OnInit {
     if (!inv) return;
     this.message.set('');
     this.error.set('');
-    this.api.generatePayments(inv.id).subscribe({
-      next: (payments) => {
-        this.message.set(`Vygenerováno ${payments.length} plateb`);
-        this.loadInvoice(inv.id);
-      },
-      error: (err) => this.error.set(err.error?.error || 'Chyba')
-    });
+    this.api
+      .generatePayments(inv.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (payments) => {
+          this.message.set(`Vygenerováno ${payments.length} plateb`);
+          this.loadInvoice(inv.id);
+        },
+        error: (err) => this.error.set(err.error?.error || 'Chyba'),
+      });
   }
 }

@@ -5,62 +5,92 @@
       <h2 class="text-xl font-bold text-gray-900">Vyúčtování {{ summary()!.period }}</h2>
       <p class="text-sm text-gray-500 mt-0.5">Přehled plateb za aktuální období</p>
     </div>
-    <a routerLink="/payments" class="text-sm text-pink-600 hover:text-pink-700 font-medium">Všechny platby &rarr;</a>
+    <a routerLink="/payments" class="text-sm text-pink-600 hover:text-pink-700 font-medium">
+      Všechny platby &rarr;
+    </a>
   </div>
 
   <!-- KPI -->
-  <div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
       <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Celkem</p>
-      <p class="text-2xl font-bold text-gray-900 mt-1">{{ summary()!.totalDue | currency:'CZK':'symbol':'1.0-0':'cs' }}</p>
-      <p class="text-xs text-gray-400 mt-0.5">{{ summary()!.totalDueNoVat | currency:'CZK':'symbol':'1.0-0':'cs' }} bez DPH</p>
+      <p class="text-2xl font-bold text-gray-900 mt-1">
+        {{ summary()!.totalDue | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }}
+      </p>
+      <p class="text-xs text-gray-400 mt-0.5">
+        {{ summary()!.totalDueNoVat | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }} bez DPH
+      </p>
     </div>
     <div class="bg-white rounded-xl p-5 shadow-sm border border-emerald-100">
       <p class="text-xs font-medium text-emerald-500 uppercase tracking-wider">Zaplaceno</p>
-      <p class="text-2xl font-bold text-emerald-600 mt-1">{{ summary()!.totalPaid | currency:'CZK':'symbol':'1.0-0':'cs' }}</p>
-      <p class="text-xs text-emerald-400 mt-0.5">{{ summary()!.totalPaidNoVat | currency:'CZK':'symbol':'1.0-0':'cs' }} bez DPH</p>
+      <p class="text-2xl font-bold text-emerald-600 mt-1">
+        {{ summary()!.totalPaid | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }}
+      </p>
+      <p class="text-xs text-emerald-400 mt-0.5">
+        {{ summary()!.totalPaidNoVat | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }} bez DPH
+      </p>
     </div>
     <div class="bg-white rounded-xl p-5 shadow-sm border border-red-100">
       <p class="text-xs font-medium text-red-400 uppercase tracking-wider">Zbývá</p>
-      <p class="text-2xl font-bold text-red-600 mt-1">{{ summary()!.totalUnpaid | currency:'CZK':'symbol':'1.0-0':'cs' }}</p>
-      <p class="text-xs text-red-300 mt-0.5">{{ summary()!.totalUnpaidNoVat | currency:'CZK':'symbol':'1.0-0':'cs' }} bez DPH</p>
+      <p class="text-2xl font-bold text-red-600 mt-1">
+        {{ summary()!.totalUnpaid | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }}
+      </p>
+      <p class="text-xs text-red-300 mt-0.5">
+        {{ summary()!.totalUnpaidNoVat | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }} bez DPH
+      </p>
     </div>
   </div>
 
   <!-- Groups -->
   <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-    <div class="grid grid-cols-[1fr_auto_auto_auto] gap-x-5 px-5 py-2.5 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+    <div
+      class="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto] gap-x-3 sm:gap-x-5 px-3 sm:px-5 py-2.5 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider"
+    >
       <div>Skupina</div>
-      <div class="text-right">Bez DPH</div>
+      <div class="text-right hidden sm:block">Bez DPH</div>
       <div class="text-right">S DPH</div>
-      <div class="text-center w-24">Stav</div>
+      <div class="text-center w-24 hidden sm:block">Stav</div>
     </div>
     @for (g of summary()!.groups; track g.group_id) {
-      <div class="grid grid-cols-[1fr_auto_auto_auto] gap-x-5 items-center px-5 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-        <div class="flex items-center gap-3">
-          <div class="w-2 h-2 rounded-full"
-               [class.bg-emerald-400]="g.is_paid"
-               [class.bg-red-400]="!g.is_paid"></div>
-          <span class="font-medium text-gray-800">{{ g.group_name }}</span>
+      <div
+        class="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_auto_auto_auto] gap-x-3 sm:gap-x-5 items-center px-3 sm:px-5 py-3.5 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors"
+      >
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div
+            class="w-2 h-2 rounded-full shrink-0"
+            [class.bg-emerald-400]="g.is_paid"
+            [class.bg-red-400]="!g.is_paid"
+          ></div>
+          <span class="font-medium text-gray-800 truncate">{{ g.group_name }}</span>
         </div>
-        <div class="text-right text-sm tabular-nums"
-             [class.text-gray-500]="!g.is_paid"
-             [class.text-emerald-600]="g.is_paid"
-             [class.opacity-60]="g.is_paid">
-          {{ g.amount_without_vat | currency:'CZK':'symbol':'1.0-0':'cs' }}
+        <div
+          class="text-right text-sm tabular-nums hidden sm:block"
+          [class.text-gray-500]="!g.is_paid"
+          [class.text-emerald-600]="g.is_paid"
+          [class.opacity-60]="g.is_paid"
+        >
+          {{ g.amount_without_vat | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }}
         </div>
-        <div class="text-right font-semibold tabular-nums"
-             [class.text-gray-900]="!g.is_paid"
-             [class.text-emerald-600]="g.is_paid"
-             [class.line-through]="g.is_paid"
-             [class.opacity-60]="g.is_paid">
-          {{ g.amount | currency:'CZK':'symbol':'1.0-0':'cs' }}
+        <div
+          class="text-right font-semibold tabular-nums"
+          [class.text-gray-900]="!g.is_paid"
+          [class.text-emerald-600]="g.is_paid"
+          [class.line-through]="g.is_paid"
+          [class.opacity-60]="g.is_paid"
+        >
+          {{ g.amount | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }}
         </div>
-        <div class="text-center w-24">
+        <div class="text-center w-24 hidden sm:block">
           @if (g.is_paid) {
-            <span class="text-xs font-medium bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">Zaplaceno</span>
+            <span
+              class="text-xs font-medium bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full"
+            >
+              Zaplaceno
+            </span>
           } @else {
-            <span class="text-xs font-medium bg-red-50 text-red-500 px-2 py-0.5 rounded-full">Nezaplaceno</span>
+            <span class="text-xs font-medium bg-red-50 text-red-500 px-2 py-0.5 rounded-full">
+              Nezaplaceno
+            </span>
           }
         </div>
       </div>
@@ -77,10 +107,16 @@
       Nahrajte T-Mobile fakturu, přiřaďte čísla ke skupinám a sledujte kdo kolik dluží.
     </p>
     <div class="flex gap-3">
-      <a routerLink="/invoices" class="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium">
+      <a
+        routerLink="/invoices"
+        class="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
+      >
         Faktury
       </a>
-      <a routerLink="/groups" class="px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+      <a
+        routerLink="/groups"
+        class="px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+      >
         Skupiny
       </a>
     </div>
@@ -92,24 +128,36 @@
   <div class="mt-8">
     <div class="flex items-center justify-between mb-3">
       <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider">Poslední faktury</h3>
-      <a routerLink="/invoices" class="text-xs text-pink-600 hover:text-pink-700 font-medium">Všechny</a>
+      <a routerLink="/invoices" class="text-xs text-pink-600 hover:text-pink-700 font-medium">
+        Všechny
+      </a>
     </div>
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-50">
       @for (inv of invoices().slice(0, 5); track inv.id) {
-        <a [routerLink]="['/invoices', inv.id]"
-           class="flex items-center justify-between px-5 py-3 hover:bg-gray-50/50 transition-colors block">
+        <a
+          [routerLink]="['/invoices', inv.id]"
+          class="flex items-center justify-between px-5 py-3 hover:bg-gray-50/50 transition-colors"
+        >
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-xs font-bold text-gray-500">
+            <div
+              class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-xs font-bold text-gray-500"
+            >
               {{ inv.period.split('-')[1] }}
             </div>
             <div>
               <span class="font-medium text-gray-800 text-sm">{{ inv.period }}</span>
-              <span class="text-xs text-gray-400 ml-2">{{ inv.item_count }} služeb</span>
+              <span class="text-xs text-gray-400 ml-2 hidden sm:inline">
+                {{ inv.item_count }} služeb
+              </span>
             </div>
           </div>
           <div class="text-right">
-            <span class="font-semibold text-sm tabular-nums">{{ inv.total_with_vat | currency:'CZK':'symbol':'1.0-0':'cs' }}</span>
-            <span class="text-xs text-gray-400 ml-2">{{ inv.total_without_vat | currency:'CZK':'symbol':'1.0-0':'cs' }} bez DPH</span>
+            <span class="font-semibold text-sm tabular-nums">
+              {{ inv.total_with_vat | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }}
+            </span>
+            <span class="text-xs text-gray-400 ml-2 hidden sm:inline">
+              {{ inv.total_without_vat | currency: 'CZK' : 'symbol' : '1.0-0' : 'cs' }} bez DPH
+            </span>
           </div>
         </a>
       }

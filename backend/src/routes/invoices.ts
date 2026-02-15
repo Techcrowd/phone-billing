@@ -2,7 +2,6 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import os from 'os';
 import { fileURLToPath } from 'url';
 import pool from '../db.js';
 import { parseTMobilePDF, type ParseResult } from '../services/pdf-parser.js';
@@ -10,7 +9,6 @@ import { aiParsePDF } from '../services/ai-parser.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
-const IMPORT_DIR = process.env.IMPORT_DIR || path.join(os.homedir(), 'Downloads', 'tmobile');
 
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -136,65 +134,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   } finally {
     client.release();
   }
-});
-
-// POST /api/invoices/import-downloads
-router.post('/import-downloads', async (req, res) => {
-  const folder = IMPORT_DIR;
-  if (!fs.existsSync(folder)) {
-    return res.status(400).json({ error: `Slozka ${folder} neexistuje` });
-  }
-
-  const files = fs.readdirSync(folder).filter(f => f.toLowerCase().endsWith('.pdf')).sort();
-  if (files.length === 0) {
-    return res.json({ imported: [], totalNew: 0, totalSkipped: 0, totalErrors: 0 });
-  }
-
-  const results: any[] = [];
-
-  for (const file of files) {
-    const filePath = path.join(folder, file);
-    const client = await pool.connect();
-    try {
-      const parseResult = await parseWithFallback(filePath);
-      if (!parseResult.period) {
-        results.push({ file, error: 'Obdobi nedetekovano', skipped: true });
-        client.release();
-        continue;
-      }
-
-      const destName = `invoice-${Date.now()}-${file.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-      fs.copyFileSync(filePath, path.join(UPLOAD_DIR, destName));
-
-      await client.query('BEGIN');
-      const { rows } = await client.query(
-        'INSERT INTO invoices (period, total_with_vat, total_without_vat, dph_rate, file_path) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [parseResult.period, parseResult.totalAmount, parseResult.totalNoDph, parseResult.dphRate, destName]
-      );
-      const invoiceId = rows[0].id;
-      await insertParsedItems(client, invoiceId, parseResult.items);
-      await autoGeneratePayments(client, invoiceId);
-      await client.query('COMMIT');
-
-      results.push({ file, period: parseResult.period, total: parseResult.totalAmount, items: parseResult.items.length, success: true });
-    } catch (e: any) {
-      await client.query('ROLLBACK');
-      if (e.code === '23505') {
-        results.push({ file, error: 'Obdobi jiz existuje', skipped: true });
-      } else {
-        results.push({ file, error: e.message });
-      }
-    } finally {
-      client.release();
-    }
-  }
-
-  res.json({
-    imported: results,
-    totalNew: results.filter(r => r.success).length,
-    totalSkipped: results.filter(r => r.skipped).length,
-    totalErrors: results.filter(r => !r.success && !r.skipped).length
-  });
 });
 
 // GET /api/invoices

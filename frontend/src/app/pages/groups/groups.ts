@@ -1,17 +1,25 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  DestroyRef,
+  ChangeDetectionStrategy,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { Group, Service } from '../../models/models';
 
 @Component({
   selector: 'app-groups',
-  standalone: true,
   imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './groups.html'
+  templateUrl: './groups.html',
 })
 export class GroupsPage implements OnInit {
   private api = inject(ApiService);
+  private destroyRef = inject(DestroyRef);
   groups = signal<Group[]>([]);
   unassigned = signal<Service[]>([]);
   newGroupName = '';
@@ -22,13 +30,21 @@ export class GroupsPage implements OnInit {
   editingLabel = signal<number | null>(null);
   editLabel = '';
 
-  ngOnInit() { this.loadAll(); }
+  ngOnInit() {
+    this.loadAll();
+  }
 
   loadAll() {
-    this.api.getGroups().subscribe(g => this.groups.set(g));
-    this.api.getServices().subscribe(services => {
-      this.unassigned.set(services.filter(s => s.group_id === null));
-    });
+    this.api
+      .getGroups()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((g) => this.groups.set(g));
+    this.api
+      .getServices()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((services) => {
+        this.unassigned.set(services.filter((s) => s.group_id === null));
+      });
   }
 
   formatIdentifier(n: string) {
@@ -38,11 +54,14 @@ export class GroupsPage implements OnInit {
 
   createGroup() {
     if (!this.newGroupName.trim()) return;
-    this.api.createGroup(this.newGroupName.trim(), this.newGroupNote.trim() || undefined).subscribe(() => {
-      this.newGroupName = '';
-      this.newGroupNote = '';
-      this.loadAll();
-    });
+    this.api
+      .createGroup(this.newGroupName.trim(), this.newGroupNote.trim() || undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.newGroupName = '';
+        this.newGroupNote = '';
+        this.loadAll();
+      });
   }
 
   startEditGroup(group: Group) {
@@ -52,26 +71,38 @@ export class GroupsPage implements OnInit {
   }
 
   saveGroup(group: Group) {
-    this.api.updateGroup(group.id, this.editName, this.editNote || undefined).subscribe(() => {
-      this.editingGroup.set(null);
-      this.loadAll();
-    });
+    this.api
+      .updateGroup(group.id, this.editName, this.editNote || undefined)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.editingGroup.set(null);
+        this.loadAll();
+      });
   }
 
   deleteGroup(group: Group) {
     if (!confirm(`Smazat skupinu "${group.name}"?`)) return;
-    this.api.deleteGroup(group.id).subscribe(() => this.loadAll());
+    this.api
+      .deleteGroup(group.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadAll());
   }
 
   assignToGroup(svc: Service, event: Event) {
     const groupId = Number((event.target as HTMLSelectElement).value);
     if (!groupId) return;
-    this.api.updateService(svc.id, groupId).subscribe(() => this.loadAll());
+    this.api
+      .updateService(svc.id, groupId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadAll());
   }
 
   removeService(svc: Service) {
     if (!confirm(`Odebrat ${svc.identifier} ze skupiny?`)) return;
-    this.api.updateService(svc.id, null).subscribe(() => this.loadAll());
+    this.api
+      .updateService(svc.id, null)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadAll());
   }
 
   startEditLabel(svc: Service) {
@@ -80,10 +111,13 @@ export class GroupsPage implements OnInit {
   }
 
   saveLabel(svc: Service) {
-    this.api.updateServiceLabel(svc.id, this.editLabel.trim()).subscribe(() => {
-      this.editingLabel.set(null);
-      this.loadAll();
-    });
+    this.api
+      .updateServiceLabel(svc.id, this.editLabel.trim())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.editingLabel.set(null);
+        this.loadAll();
+      });
   }
 
   cancelEditLabel() {

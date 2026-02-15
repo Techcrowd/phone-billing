@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Group, Service, Invoice, InvoiceDetail, Payment, PaymentSummary, ImportResult } from '../models/models';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Group, Service, Invoice, InvoiceDetail, Payment, PaymentSummary } from '../models/models';
 
 const API = '/api';
 
@@ -47,32 +47,30 @@ export class ApiService {
     return this.http.get<InvoiceDetail>(`${API}/invoices/${id}`);
   }
 
-  uploadInvoice(file: File, period?: string) {
+  uploadInvoice(file: File) {
     const formData = new FormData();
     formData.append('file', file);
-    if (period) formData.append('period', period);
-    return this.http.post<any>(`${API}/invoices/upload`, formData);
+    return this.http.post<{ parseResult?: { itemCount: number } }>(
+      `${API}/invoices/upload`,
+      formData,
+    );
   }
 
   deleteInvoice(id: number) {
     return this.http.delete(`${API}/invoices/${id}`);
   }
 
-  importFromDownloads() {
-    return this.http.post<ImportResult>(`${API}/invoices/import-downloads`, {});
-  }
-
   // Payments
   getPayments(period?: string, groupId?: number) {
-    const params: any = {};
-    if (period) params.period = period;
-    if (groupId) params.group_id = groupId;
+    let params = new HttpParams();
+    if (period) params = params.set('period', period);
+    if (groupId) params = params.set('group_id', groupId.toString());
     return this.http.get<Payment[]>(`${API}/payments`, { params });
   }
 
   getPaymentSummary(period?: string) {
-    const params: any = {};
-    if (period) params.period = period;
+    let params = new HttpParams();
+    if (period) params = params.set('period', period);
     return this.http.get<PaymentSummary>(`${API}/payments/summary`, { params });
   }
 
@@ -85,9 +83,13 @@ export class ApiService {
   }
 
   downloadPaymentsExport(period?: string, groupId?: number) {
-    const params: any = {};
-    if (period) params.period = period;
-    if (groupId) params.group_id = groupId;
-    return this.http.get(`${API}/payments/export`, { params, responseType: 'blob', observe: 'response' });
+    let params = new HttpParams();
+    if (period) params = params.set('period', period);
+    if (groupId) params = params.set('group_id', groupId.toString());
+    return this.http.get(`${API}/payments/export`, {
+      params,
+      responseType: 'blob',
+      observe: 'response',
+    });
   }
 }

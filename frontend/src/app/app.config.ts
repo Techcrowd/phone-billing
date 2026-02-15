@@ -27,8 +27,8 @@ const authInterceptor: HttpInterceptorFn = (req, next) => {
           auth.logout();
           router.navigate(['/login']);
         }
-      }
-    })
+      },
+    }),
   );
 };
 
@@ -37,6 +37,6 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withInterceptors([authInterceptor])),
-    { provide: LOCALE_ID, useValue: 'cs' }
-  ]
+    { provide: LOCALE_ID, useValue: 'cs' },
+  ],
 };

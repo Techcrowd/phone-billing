@@ -61,20 +61,13 @@ export interface InvoiceDetail {
   groups: GroupBreakdown[];
 }
 
-export interface ImportResult {
-  imported: { file: string; period?: string; total?: number; items?: number; success?: boolean; error?: string; skipped?: boolean }[];
-  totalNew: number;
-  totalSkipped: number;
-  totalErrors: number;
-}
-
 export interface Payment {
   id: number;
   invoice_id: number;
   group_id: number;
   amount: number;
   amount_without_vat: number;
-  is_paid: number;
+  is_paid: boolean;
   paid_at: string | null;
   group_name: string;
   period: string;

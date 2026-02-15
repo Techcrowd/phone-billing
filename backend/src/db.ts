@@ -1,7 +1,9 @@
 import pg from 'pg';
 
+if (!process.env.DATABASE_URL) throw new Error('Missing DATABASE_URL environment variable');
+
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://phonebills:phonebills@localhost:5432/phonebills',
+  connectionString: process.env.DATABASE_URL,
   connectionTimeoutMillis: 10000,
 });
 

@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '971484727968-574ubh7lhkm02tb35fcje7btne3hu8qp.apps.googleusercontent.com';
-const ALLOWED_EMAIL = process.env.ALLOWED_EMAIL || 'novak@techcrowd.cz';
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const ALLOWED_EMAIL = process.env.ALLOWED_EMAIL;
+
+if (!CLIENT_ID) throw new Error('Missing GOOGLE_CLIENT_ID environment variable');
+if (!ALLOWED_EMAIL) throw new Error('Missing ALLOWED_EMAIL environment variable');
 
 const client = new OAuth2Client(CLIENT_ID);
 

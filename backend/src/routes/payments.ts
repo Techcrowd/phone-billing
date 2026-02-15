@@ -167,7 +167,7 @@ router.get('/export', async (req, res) => {
   const totalNoVat = payments.reduce((s: number, p: any) => s + p.amount_without_vat, 0);
 
   // SPAYD QR code
-  const iban = 'CZ3908000000002112251153';
+  const iban = process.env.PAYMENT_IBAN || 'CZ3908000000002112251153';
   const msg = period ? `Vyuctovani telefonu ${period}` : 'Vyuctovani telefonu';
   const spayd = `SPD*1.0*ACC:${iban}*AM:${total.toFixed(2)}*CC:CZK*MSG:${msg}`;
   const qrDataUrl = await QRCode.toDataURL(spayd, { width: 200, margin: 1 });
