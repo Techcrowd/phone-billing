@@ -1,41 +1,24 @@
 services:
   db:
-    image: mysql:8
+    image: postgres:16-alpine
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: phonebills
-      MYSQL_USER: phonebills
-      MYSQL_PASSWORD: phonebills
+      POSTGRES_DB: phonebills
+      POSTGRES_USER: phonebills
+      POSTGRES_PASSWORD: phonebills
     ports:
-      - "3307:3306"
+      - "5433:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD-SHELL", "pg_isready -U phonebills"]
       interval: 5s
       timeout: 3s
       retries: 20
 
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    environment:
-      PMA_HOST: db
-      PMA_USER: root
-      PMA_PASSWORD: rootpass
-    ports:
-      - "8080:80"
-    depends_on:
-      db:
-        condition: service_healthy
-
   backend:
     build: ./backend
     environment:
-      DB_HOST: db
-      DB_PORT: 3306
-      DB_USER: phonebills
-      DB_PASSWORD: phonebills
-      DB_NAME: phonebills
+      DATABASE_URL: postgres://phonebills:phonebills@db:5432/phonebills
       UPLOAD_DIR: /app/uploads
       IMPORT_DIR: /import
     ports:
@@ -55,5 +38,5 @@ services:
       - backend
 
 volumes:
-  mysql_data:
+  pg_data:
   uploads:
