@@ -119,10 +119,21 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Obdobi se nepodarilo detekovat. Zadejte ho rucne (YYYY-MM).' });
     }
 
+    // Dedup podle čísla daňového dokladu (více vyúčtování pod jedním obdobím je povoleno)
+    if (parseResult.docNumber) {
+      const { rows: dup } = await client.query('SELECT id, period FROM invoices WHERE doc_number = $1', [parseResult.docNumber]);
+      if (dup.length > 0) {
+        fs.unlinkSync(req.file.path);
+        return res.status(409).json({ error: `Toto vyúčtování už je nahrané (doklad č. ${parseResult.docNumber}, období ${dup[0].period})` });
+      }
+    }
+
+    const source = req.body.source === 'email' ? 'email' : 'manual';
+
     await client.query('BEGIN');
     const { rows } = await client.query(
-      'INSERT INTO invoices (period, total_with_vat, total_without_vat, dph_rate, file_path) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [period, parseResult.totalAmount, parseResult.totalNoDph, parseResult.dphRate, req.file.filename]
+      'INSERT INTO invoices (period, total_with_vat, total_without_vat, dph_rate, file_path, doc_number, source) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      [period, parseResult.totalAmount, parseResult.totalNoDph, parseResult.dphRate, req.file.filename, parseResult.docNumber, source]
     );
     const invoiceId = rows[0].id;
     await insertParsedItems(client, invoiceId, parseResult.items);
@@ -135,7 +146,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     await client.query('ROLLBACK');
     if (e.code === '23505') {
       fs.unlinkSync(req.file.path);
-      return res.status(409).json({ error: 'Faktura za toto obdobi jiz existuje' });
+      return res.status(409).json({ error: 'Toto vyúčtování už je nahrané (duplicitní daňový doklad)' });
     }
     throw e;
   } finally {
@@ -222,6 +233,8 @@ router.get('/:id', async (req, res) => {
     total_without_vat: invoice.total_without_vat,
     dph_rate: invoice.dph_rate,
     file_path: invoice.file_path,
+    doc_number: invoice.doc_number,
+    source: invoice.source,
     imported_at: invoice.imported_at,
     groups
   });

@@ -6,7 +6,8 @@ Interní aplikace pro správu firemních telefonních vyúčtování T-Mobile. P
 
 ## Funkce
 
-- **Upload PDF faktur** — automatický parsing T-Mobile vyúčtování (regex + Claude AI fallback)
+- **Upload PDF faktur** — automatický parsing T-Mobile vyúčtování (regex + Claude AI fallback); více vyúčtování pod jedním měsícem, deduplikace podle čísla daňového dokladu
+- **Gmail watcher** — automatický import vyúčtování z e-mailu + rozeslání podkladů (viz `automation/README.md`)
 - **Skupiny služeb** — přiřazení telefonních čísel / DSL / TV k nákladovým střediskům
 - **Sledování plateb** — kdo kolik dluží, toggle zaplaceno/nezaplaceno
 - **PDF export** — generování vyúčtování s QR kódem pro bankovní platbu (SPAYD)

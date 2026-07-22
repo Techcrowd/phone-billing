@@ -17,6 +17,7 @@ export interface ParseResult {
   dphRate: number;       // sazba DPH (0.21)
   period: string;        // "2026-02"
   periodText: string;    // "6.1. - 5.2.2026"
+  docNumber: string | null; // "Daňový doklad číslo" — unikátní pro každé vyúčtování
   rawText: string;
   error?: string;
 }
@@ -67,6 +68,10 @@ export async function parseTMobilePDF(filePath: string): Promise<ParseResult> {
   const dphRateMatch = text.match(/DPH\s*\((\d+)%\)/);
   const dphRate = dphRateMatch ? parseInt(dphRateMatch[1]) / 100 : 0.21;
 
+  // Číslo daňového dokladu: "Daňový doklad číslo2313523225"
+  const docNumberMatch = text.match(/Daňový doklad číslo\s*(\d+)/);
+  const docNumber = docNumberMatch ? docNumberMatch[1] : null;
+
   // Najdi sekci "Přehled služeb po číslech"
   const detailStart = text.indexOf('Přehled služeb po číslech');
   if (detailStart === -1) {
@@ -78,6 +83,7 @@ export async function parseTMobilePDF(filePath: string): Promise<ParseResult> {
       dphRate,
       period,
       periodText,
+      docNumber,
       rawText: text,
       error: 'Sekce "Přehled služeb po číslech" nenalezena'
     };
@@ -144,6 +150,7 @@ export async function parseTMobilePDF(filePath: string): Promise<ParseResult> {
     dphRate,
     period,
     periodText,
+    docNumber,
     rawText: text
   };
 }

@@ -92,13 +92,17 @@ router.get('/summary', async (req, res) => {
     invoiceFilter = 'AND i.period = (SELECT MAX(period) FROM invoices)';
   }
 
+  // Agregace přes všechna vyúčtování v období (jedno období může mít více faktur)
   const { rows } = await pool.query(`
     SELECT g.id as group_id, g.name as group_name, i.period,
-      p.amount, p.amount_without_vat, p.is_paid, p.paid_at, p.id as payment_id
+      SUM(p.amount)::float as amount, SUM(p.amount_without_vat)::float as amount_without_vat,
+      BOOL_AND(p.is_paid) as is_paid, MAX(p.paid_at) as paid_at,
+      ARRAY_AGG(p.id ORDER BY p.id) as payment_ids
     FROM payments p
     JOIN "groups" g ON g.id = p.group_id
     JOIN invoices i ON i.id = p.invoice_id
     WHERE 1=1 ${invoiceFilter}
+    GROUP BY g.id, g.name, i.period
     ORDER BY g.name
   `, params);
 
@@ -125,7 +129,7 @@ router.get('/export', async (req, res) => {
   const { period, group_id } = req.query;
   let sql = `
     SELECT p.id as payment_id, p.amount, p.amount_without_vat,
-           g.id as group_id, g.name as group_name, i.id as invoice_id, i.period
+           g.id as group_id, g.name as group_name, i.id as invoice_id, i.period, i.doc_number
     FROM payments p
     JOIN "groups" g ON g.id = p.group_id
     JOIN invoices i ON i.id = p.invoice_id
@@ -241,7 +245,9 @@ router.get('/export', async (req, res) => {
     doc.font('MainBold').fontSize(10).fillColor('#1e293b');
     doc.text(p.group_name, 62, y + 7);
     doc.font('Main').fontSize(8).fillColor('#94a3b8');
-    doc.text(fmtPeriod(p.period), 200, y + 8);
+    const multiInvoicePeriod = payments.filter((x: any) => x.period === p.period).some((x: any) => x.invoice_id !== p.invoice_id);
+    const periodLabel = multiInvoicePeriod && p.doc_number ? `${fmtPeriod(p.period)} · doklad ${p.doc_number}` : fmtPeriod(p.period);
+    doc.text(periodLabel, 200, y + 8);
     doc.font('MainBold').fontSize(10).fillColor('#dc2626');
     doc.text(czk(p.amount), 410, y + 7, { width: 125, align: 'right' });
     y += 30;

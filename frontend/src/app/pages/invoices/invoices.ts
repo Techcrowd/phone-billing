@@ -90,7 +90,8 @@ export class InvoicesPage implements OnInit {
   deleteInvoice(inv: Invoice, event: Event) {
     event.preventDefault();
     event.stopPropagation();
-    if (!confirm(`Smazat fakturu za ${inv.period}?`)) return;
+    const docInfo = inv.doc_number ? ` (doklad ${inv.doc_number})` : '';
+    if (!confirm(`Smazat fakturu za ${inv.period}${docInfo}?`)) return;
     this.api
       .deleteInvoice(inv.id)
       .pipe(takeUntilDestroyed(this.destroyRef))

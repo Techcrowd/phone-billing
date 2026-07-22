@@ -13,7 +13,12 @@
       <h2 class="text-lg sm:text-xl font-bold text-gray-900 truncate">
         {{ formatPeriod(inv.period) }}
       </h2>
-      <p class="text-sm text-gray-500">{{ totalItems() }} položek</p>
+      <p class="text-sm text-gray-500">
+        {{ totalItems() }} položek
+        @if (inv.doc_number) {
+          <span class="text-gray-400">· doklad {{ inv.doc_number }}</span>
+        }
+      </p>
     </div>
     <div class="text-right shrink-0">
       <p class="text-xl sm:text-2xl font-bold text-gray-900">

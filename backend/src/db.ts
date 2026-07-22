@@ -1,4 +1,7 @@
 import pg from 'pg';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
 if (!process.env.DATABASE_URL) throw new Error('Missing DATABASE_URL environment variable');
 
@@ -43,14 +46,21 @@ export async function initDB(retries = 10, delay = 3000) {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS invoices (
       id SERIAL PRIMARY KEY,
-      period TEXT NOT NULL UNIQUE,
+      period TEXT NOT NULL,
       file_path TEXT,
       total_with_vat DOUBLE PRECISION NOT NULL,
       total_without_vat DOUBLE PRECISION NOT NULL DEFAULT 0,
       dph_rate DOUBLE PRECISION NOT NULL DEFAULT 0.21,
+      doc_number TEXT,
+      source TEXT NOT NULL DEFAULT 'manual',
       imported_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  // Migrace: více vyúčtování pod jedním obdobím, dedup podle čísla daňového dokladu
+  await pool.query(`ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_period_key`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS doc_number TEXT`);
+  await pool.query(`ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual'`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS invoices_doc_number_key ON invoices(doc_number) WHERE doc_number IS NOT NULL`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS invoice_items (
       id SERIAL PRIMARY KEY,
@@ -76,6 +86,34 @@ export async function initDB(retries = 10, delay = 3000) {
     )
   `);
   console.log('Database schema initialized');
+  await backfillDocNumbers();
+}
+
+// Jednorázový backfill: doplní doc_number ke starším fakturám z uložených PDF
+async function backfillDocNumbers() {
+  const { rows } = await pool.query(
+    `SELECT id, file_path FROM invoices WHERE doc_number IS NULL AND file_path IS NOT NULL`
+  );
+  if (rows.length === 0) return;
+
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads');
+  const { parseTMobilePDF } = await import('./services/pdf-parser.js');
+
+  for (const inv of rows) {
+    const filePath = path.join(uploadDir, path.basename(inv.file_path));
+    if (!fs.existsSync(filePath)) continue;
+    try {
+      const parsed = await parseTMobilePDF(filePath);
+      if (parsed.docNumber) {
+        await pool.query('UPDATE invoices SET doc_number = $1 WHERE id = $2', [parsed.docNumber, inv.id]);
+        console.log(`Backfill doc_number: invoice ${inv.id} → ${parsed.docNumber}`);
+      }
+    } catch (e: any) {
+      // Duplicitní doklad nebo nečitelné PDF — necháme NULL
+      console.warn(`Backfill doc_number selhal pro invoice ${inv.id}: ${e.message}`);
+    }
+  }
 }
 
 export default pool;

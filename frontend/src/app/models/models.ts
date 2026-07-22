@@ -24,6 +24,8 @@ export interface Invoice {
   total_without_vat: number;
   dph_rate: number;
   file_path: string | null;
+  doc_number: string | null;
+  source: 'manual' | 'email';
   imported_at: string;
   item_count?: number;
   paid_groups?: number;
@@ -57,6 +59,8 @@ export interface InvoiceDetail {
   total_without_vat: number;
   dph_rate: number;
   file_path: string | null;
+  doc_number: string | null;
+  source: 'manual' | 'email';
   imported_at: string;
   groups: GroupBreakdown[];
 }
@@ -73,9 +77,20 @@ export interface Payment {
   period: string;
 }
 
+export interface SummaryGroup {
+  group_id: number;
+  group_name: string;
+  period: string;
+  amount: number;
+  amount_without_vat: number;
+  is_paid: boolean;
+  paid_at: string | null;
+  payment_ids: number[];
+}
+
 export interface PaymentSummary {
   period: string | null;
-  groups: Payment[];
+  groups: SummaryGroup[];
   totalDue: number;
   totalDueNoVat: number;
   totalPaid: number;
