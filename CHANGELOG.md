@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.1 — 2026-07-22
+
+- Parser: podpora dokladů **smluvní pokuty** (`F-<číslo>.pdf`, „Vyúčtování smluvní pokuty") — období z DUZP, částka bez DPH, přiřazení službě z tabulky Účtované položky
+- Watcher: `F-*.pdf` v attachment patternu — nahrává se každý doklad z e-mailu, ne jen měsíční vyúčtování
+
 ## 2.1.0 — 2026-07-22
 
 ### Více vyúčtování pod jedním měsícem
