@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { resetMocks } from './setup.js';
 
 const { mockPool, mockClient } = vi.hoisted(() => {
+  // Env musí být nastavené před hoistnutými importy (auth.ts při importu validuje)
+  process.env.GOOGLE_CLIENT_ID = 'test-client-id';
+  process.env.ALLOWED_EMAIL = 'test@example.com';
+  process.env.AUTOMATION_API_KEY = 'secret-automation-key';
   const mockClient = {
     query: vi.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
     release: vi.fn(),
@@ -17,10 +21,6 @@ vi.mock('../db.js', () => ({
   default: mockPool,
   initDB: vi.fn().mockResolvedValue(undefined),
 }));
-
-process.env.GOOGLE_CLIENT_ID = 'test-client-id';
-process.env.ALLOWED_EMAIL = 'test@example.com';
-process.env.AUTOMATION_API_KEY = 'secret-automation-key';
 
 import request from 'supertest';
 import { app } from '../server.js';
