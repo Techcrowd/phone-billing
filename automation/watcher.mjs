@@ -9,8 +9,10 @@
  * Bez závislostí — Node 22+ (fetch, FormData, Blob).
  *
  * Konfigurace: ~/.claude/phone-bills-automation.json
- *   { "api_base": "https://phone-bills-tc.fly.dev", "api_key": "...", "notify_email": "novak@techcrowd.cz" }
+ *   { "api_base": "https://phone-bills-tc.fly.dev", "api_key": "...", "notify_email": "novak@techcrowd.cz",
+ *     "extra_oauth_dirs": ["~/.claude/gmail-oauth-personal"] }   // volitelné další schránky (jen čtení)
  * Gmail OAuth:  ~/.claude/gmail-oauth/{client_secret.json,token.json} (scope gmail.readonly + gmail.compose)
+ *               další schránky autorizuješ přes `node authorize.mjs <dir> <email>` (token.json v <dir>)
  * Stav:         ~/.claude/phone-bills-automation-state.json (zpracované Gmail message ids)
  *
  * Použití: node watcher.mjs [--dry-run]
@@ -43,11 +45,12 @@ function loadJson(p, fallback = null) {
 
 // ---------- Gmail auth ----------
 
-async function getAccessToken() {
+async function getAccessToken(oauthDir = OAUTH_DIR) {
+  // client_secret.json je sdílený v hlavním OAUTH_DIR, token.json per schránka
   const secret = loadJson(path.join(OAUTH_DIR, 'client_secret.json'));
-  const token = loadJson(path.join(OAUTH_DIR, 'token.json'));
+  const token = loadJson(path.join(oauthDir, 'token.json'));
   if (!secret || !token?.refresh_token) {
-    throw new Error(`Chybí Gmail OAuth credentials v ${OAUTH_DIR}`);
+    throw new Error(`Chybí Gmail OAuth credentials (${oauthDir})`);
   }
   const { client_id, client_secret } = secret.installed || secret.web;
   const res = await fetch('https://oauth2.googleapis.com/token', {
@@ -162,61 +165,77 @@ async function main() {
   const state = loadJson(STATE_PATH, { processedMessageIds: [] });
   const processed = new Set(state.processedMessageIds);
 
-  log(`Start${DRY_RUN ? ' (dry-run)' : ''} — hledám: ${GMAIL_QUERY}`);
-  const accessToken = await getAccessToken();
-
-  const search = await gmailApi(accessToken, `messages?q=${encodeURIComponent(GMAIL_QUERY)}&maxResults=50`);
-  const messages = (search.messages || []).filter((m) => !processed.has(m.id));
-  log(`Nalezeno ${search.messages?.length || 0} zpráv, ${messages.length} nezpracovaných`);
+  const mailboxes = [OAUTH_DIR, ...(config.extra_oauth_dirs || []).map((d) => d.replace(/^~/, HOME))];
+  log(`Start${DRY_RUN ? ' (dry-run)' : ''} — hledám: ${GMAIL_QUERY} (${mailboxes.length} schránek)`);
 
   const uploaded = []; // { period, docNumber, total, filename }
   const skipped = [];
+  let primaryToken = null;
 
-  for (const m of messages) {
-    const full = await gmailApi(accessToken, `messages/${m.id}?format=full`);
-    const subject = headerValue(full, 'Subject');
-    const attachments = walkParts(full.payload).filter(
-      (p) => p.filename.toLowerCase().endsWith('.pdf') && ATTACHMENT_PATTERN.test(p.filename),
-    );
-    if (attachments.length === 0) {
-      processed.add(m.id);
+  for (const mailbox of mailboxes) {
+    const mailboxKey = path.basename(mailbox);
+    let accessToken;
+    try {
+      accessToken = await getAccessToken(mailbox);
+    } catch (e) {
+      log(`CHYBA: schránka ${mailboxKey}: ${e.message}`);
       continue;
     }
-    log(`Zpráva "${subject}" — ${attachments.length} PDF příloh`);
+    if (mailbox === OAUTH_DIR) primaryToken = accessToken;
 
-    let allOk = true;
-    for (const att of attachments) {
-      if (DRY_RUN) {
-        log(`  [dry-run] nahrál bych: ${att.filename}`);
+    const search = await gmailApi(accessToken, `messages?q=${encodeURIComponent(GMAIL_QUERY)}&maxResults=50`);
+    const stateKey = (id) => `${mailboxKey}:${id}`;
+    const messages = (search.messages || []).filter((m) => !processed.has(stateKey(m.id)) && !processed.has(m.id));
+    log(`[${mailboxKey}] Nalezeno ${search.messages?.length || 0} zpráv, ${messages.length} nezpracovaných`);
+
+    for (const m of messages) {
+      const full = await gmailApi(accessToken, `messages/${m.id}?format=full`);
+      const subject = headerValue(full, 'Subject');
+      const attachments = walkParts(full.payload).filter(
+        (p) => p.filename.toLowerCase().endsWith('.pdf') && ATTACHMENT_PATTERN.test(p.filename),
+      );
+      if (attachments.length === 0) {
+        processed.add(stateKey(m.id));
         continue;
       }
-      try {
-        const attData = await gmailApi(accessToken, `messages/${m.id}/attachments/${att.body.attachmentId}`);
-        const buffer = base64UrlToBuffer(attData.data);
-        const { status, body } = await uploadInvoice(config, att.filename, buffer);
-        if (status === 201) {
-          log(`  Nahráno: ${att.filename} → období ${body.invoice.period}, doklad ${body.invoice.doc_number}`);
-          uploaded.push({
-            period: body.invoice.period,
-            docNumber: body.invoice.doc_number,
-            total: body.invoice.total_with_vat,
-            filename: att.filename,
-          });
-        } else if (status === 409) {
-          log(`  Přeskočeno (už nahráno): ${att.filename}`);
-        } else {
-          log(`  CHYBA uploadu ${att.filename}: ${status} ${JSON.stringify(body)}`);
-          skipped.push({ filename: att.filename, error: body.error || `HTTP ${status}` });
-          // 4xx = trvalá chyba (soubor se nezmění) → zprávu označit jako zpracovanou
-          if (status >= 500) allOk = false;
+      log(`[${mailboxKey}] Zpráva "${subject}" — ${attachments.length} PDF příloh`);
+
+      let allOk = true;
+      for (const att of attachments) {
+        if (DRY_RUN) {
+          log(`  [dry-run] nahrál bych: ${att.filename}`);
+          continue;
         }
-      } catch (e) {
-        log(`  CHYBA zpracování ${att.filename}: ${e.message}`);
-        allOk = false;
+        try {
+          const attData = await gmailApi(accessToken, `messages/${m.id}/attachments/${att.body.attachmentId}`);
+          const buffer = base64UrlToBuffer(attData.data);
+          const { status, body } = await uploadInvoice(config, att.filename, buffer);
+          if (status === 201) {
+            log(`  Nahráno: ${att.filename} → období ${body.invoice.period}, doklad ${body.invoice.doc_number}`);
+            uploaded.push({
+              period: body.invoice.period,
+              docNumber: body.invoice.doc_number,
+              total: body.invoice.total_with_vat,
+              filename: att.filename,
+            });
+          } else if (status === 409) {
+            log(`  Přeskočeno (už nahráno): ${att.filename}`);
+          } else {
+            log(`  CHYBA uploadu ${att.filename}: ${status} ${JSON.stringify(body)}`);
+            skipped.push({ filename: att.filename, error: body.error || `HTTP ${status}` });
+            // 4xx = trvalá chyba (soubor se nezmění) → zprávu označit jako zpracovanou
+            if (status >= 500) allOk = false;
+          }
+        } catch (e) {
+          log(`  CHYBA zpracování ${att.filename}: ${e.message}`);
+          allOk = false;
+        }
       }
+      if (allOk && !DRY_RUN) processed.add(stateKey(m.id));
     }
-    if (allOk && !DRY_RUN) processed.add(m.id);
   }
+
+  const accessToken = primaryToken; // odesílání e-mailu jde vždy z hlavní schránky (scope compose)
 
   if (DRY_RUN) {
     log('Dry-run hotov, nic se nenahrálo ani neposlalo.');
@@ -225,6 +244,9 @@ async function main() {
 
   // Pro každé nové období vygeneruj PDF vyúčtování per skupina a pošli e-mailem
   const periods = [...new Set(uploaded.map((u) => u.period))];
+  if (periods.length > 0 && !accessToken) {
+    throw new Error('Hlavní schránka není dostupná — nelze odeslat souhrnný e-mail');
+  }
   for (const period of periods) {
     const summaryRes = await api(config, `/api/payments/summary?period=${encodeURIComponent(period)}`);
     if (!summaryRes.ok) {
