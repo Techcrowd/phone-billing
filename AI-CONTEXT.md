@@ -31,11 +31,12 @@ Migrace jsou idempotentní v `initDB()` (db.ts) včetně backfillu `doc_number` 
 ## Automatizace (automation/)
 
 - `watcher.mjs` — denní launchd `cz.techcrowd.phone-bills-watcher` (9:00, Mac): Gmail → upload → per-skupina PDF → souhrnný e-mail na novak@techcrowd.cz
-- Konfigurace `~/.claude/phone-bills-automation.json`, stav `~/.claude/phone-bills-automation-state.json`, Gmail OAuth `~/.claude/gmail-oauth/`
+- Čte VÍCE schránek: pracovní `~/.claude/gmail-oauth/` + osobní `~/.claude/gmail-oauth-personal/` (config `extra_oauth_dirs`)
+- Konfigurace `~/.claude/phone-bills-automation.json`, stav `~/.claude/phone-bills-automation-state.json`
 - T-Mobile cyklus: období 6.–5., **vystavení 6. v měsíci**, splatnost 20.
-- ⚠️ K 07/2026 vyúčtování e-mailem NECHODÍ — je nutné zapnout zasílání v portálu Moje firma; watcher je připravený
+- **Vyúčtování chodí e-mailem na osobní novakmilos7@gmail.com** (`el.vyuctovani@t-mobile.cz`, 8.–11. v měsíci); osobní OAuth = vlastní GCP projekt (External/In production, NEpřepínat do Testing), autorizace `automation/authorize.mjs`
+- Ověřeno naostro 22.7.2026: 2026-07 nahráno automaticky z osobní schránky, dedup 2026-06 proti ručnímu uploadu fungoval, souhrnný e-mail se 7 PDF odeslán
 
 ## Stav / TODO
 
-- [ ] Zapnout zasílání vyúčtování e-mailem v Moje firma (ruční krok, Miloš)
 - Testy: 45 (vitest, mock pg), CI: GitHub Actions (test + security-audit + deploy na Fly)
