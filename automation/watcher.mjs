@@ -29,7 +29,8 @@ const CONFIG_PATH = path.join(HOME, '.claude', 'phone-bills-automation.json');
 const STATE_PATH = path.join(HOME, '.claude', 'phone-bills-automation-state.json');
 
 const GMAIL_QUERY = 'from:t-mobile.cz filename:pdf newer_than:60d';
-const ATTACHMENT_PATTERN = /vyuctovani|vyúčtování|faktura/i;
+// Vyuctovani_*.pdf = měsíční vyúčtování; F-<číslo>.pdf = samostatné doklady (např. smluvní pokuta)
+const ATTACHMENT_PATTERN = /vyuctovani|vyúčtování|faktura|^F-\d+\.pdf$/i;
 
 function log(msg) {
   console.log(`[${new Date().toISOString()}] ${msg}`);

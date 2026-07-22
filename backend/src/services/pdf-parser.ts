@@ -34,7 +34,14 @@ export interface ParseResult {
 export async function parseTMobilePDF(filePath: string): Promise<ParseResult> {
   const buffer = fs.readFileSync(filePath);
   const data = await pdf(buffer);
-  const text = data.text;
+  return parseTMobileText(data.text);
+}
+
+export function parseTMobileText(text: string): ParseResult {
+  // Jiný typ dokladu: "Vyúčtování smluvní pokuty" (např. nevrácené zařízení) — jednopoložkový doklad bez DPH
+  if (/Vyúčtování smluvní pokuty/i.test(text)) {
+    return parsePenaltyText(text);
+  }
 
   // Období: "za období 6.1. - 5.2.2026"
   let period = '';
@@ -152,6 +159,63 @@ export async function parseTMobilePDF(filePath: string): Promise<ParseResult> {
     periodText,
     docNumber,
     rawText: text
+  };
+}
+
+/**
+ * "Vyúčtování smluvní pokuty" — samostatný doklad (např. za nevrácené zařízení).
+ * Nemá "za období" ani "Přehled služeb po číslech"; období se bere z DUZP,
+ * částka nepodléhá DPH a přiřadí se službě uvedené v tabulce Účtované položky.
+ */
+function parsePenaltyText(text: string): ParseResult {
+  const docNumberMatch = text.match(/Doklad číslo\s*:?\s*(\d+)/);
+  const docNumber = docNumberMatch ? docNumberMatch[1] : null;
+
+  let period = '';
+  let periodText = '';
+  const duzpMatch = text.match(/Datum vystavení\s*\/\s*DUZP\s*(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (duzpMatch) {
+    period = `${duzpMatch[3]}-${duzpMatch[2].padStart(2, '0')}`;
+    periodText = `DUZP ${duzpMatch[1]}.${duzpMatch[2]}.${duzpMatch[3]}`;
+  }
+
+  let totalAmount = 0;
+  const totalMatch = text.match(/Celkem k úhradě\s*(?:\(Kč\))?\s*([\d\s]+,\d{2})/);
+  if (totalMatch) {
+    totalAmount = parseAmount(totalMatch[1]);
+  }
+
+  // Název dokladu, např. "Smluvní pokuta - Pronájem zařízení"
+  const titleMatch = text.match(/^(Smluvní pokuta[^\n]*)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : 'Smluvní pokuta';
+
+  // Služba, ke které se pokuta vztahuje — hledej jen v tabulce Účtované položky
+  const itemsStart = text.indexOf('Účtované položky');
+  const itemsText = itemsStart >= 0 ? text.substring(itemsStart) : text;
+  const serviceMatch = itemsText.match(/(DSL\d+|TV\d+|LIC\d+|(?<!\d)\d{9}(?!\d))/);
+
+  const items: ParsedItem[] = [];
+  if (serviceMatch && totalAmount > 0) {
+    items.push({
+      phoneNumber: serviceMatch[1],
+      serviceName: title,
+      amountNoDph: 0,
+      amountNonDph: totalAmount,
+      amountWithDph: totalAmount,
+    });
+  }
+
+  return {
+    success: items.length > 0 && !!period,
+    items,
+    totalAmount,
+    totalNoDph: 0,
+    dphRate: 0.21,
+    period,
+    periodText,
+    docNumber,
+    rawText: text,
+    ...(items.length === 0 || !period ? { error: 'Doklad smluvní pokuty se nepodařilo naparsovat' } : {}),
   };
 }
 
