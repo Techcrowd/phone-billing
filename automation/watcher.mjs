@@ -46,8 +46,8 @@ function loadJson(p, fallback = null) {
 // ---------- Gmail auth ----------
 
 async function getAccessToken(oauthDir = OAUTH_DIR) {
-  // client_secret.json je sdílený v hlavním OAUTH_DIR, token.json per schránka
-  const secret = loadJson(path.join(OAUTH_DIR, 'client_secret.json'));
+  // client_secret.json: preferuj vlastní ve složce schránky (vlastní GCP projekt), jinak sdílený
+  const secret = loadJson(path.join(oauthDir, 'client_secret.json')) || loadJson(path.join(OAUTH_DIR, 'client_secret.json'));
   const token = loadJson(path.join(oauthDir, 'token.json'));
   if (!secret || !token?.refresh_token) {
     throw new Error(`Chybí Gmail OAuth credentials (${oauthDir})`);

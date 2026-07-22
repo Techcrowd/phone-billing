@@ -5,9 +5,10 @@
  * Použití: node authorize.mjs <target_oauth_dir> [login_hint]
  *   node authorize.mjs ~/.claude/gmail-oauth-personal novakmilos7@gmail.com
  *
- * Použije client_secret.json ze sdíleného ~/.claude/gmail-oauth/,
- * spustí lokální server na http://localhost:8765, vypíše URL k odkliknutí
- * a po dokončení uloží token.json (scope gmail.readonly) do cílové složky.
+ * Použije client_secret.json z cílové složky (pokud tam je — vlastní GCP projekt),
+ * jinak ze sdíleného ~/.claude/gmail-oauth/. Spustí lokální server na
+ * http://localhost:8765, vypíše URL k odkliknutí a po dokončení uloží
+ * token.json (scope gmail.readonly + gmail.compose) do cílové složky.
  */
 
 import http from 'http';
@@ -21,14 +22,18 @@ const targetDir = process.argv[2] ? process.argv[2].replace(/^~/, HOME) : null;
 const loginHint = process.argv[3] || '';
 const PORT = 8765;
 const REDIRECT_URI = `http://localhost:${PORT}`;
-const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose';
 
 if (!targetDir) {
   console.error('Použití: node authorize.mjs <target_oauth_dir> [login_hint]');
   process.exit(1);
 }
 
-const secret = JSON.parse(fs.readFileSync(path.join(SHARED_OAUTH_DIR, 'client_secret.json'), 'utf-8'));
+const secretPath = fs.existsSync(path.join(targetDir, 'client_secret.json'))
+  ? path.join(targetDir, 'client_secret.json')
+  : path.join(SHARED_OAUTH_DIR, 'client_secret.json');
+console.log('Používám client_secret:', secretPath);
+const secret = JSON.parse(fs.readFileSync(secretPath, 'utf-8'));
 const { client_id, client_secret } = secret.installed || secret.web;
 
 const authUrl =
