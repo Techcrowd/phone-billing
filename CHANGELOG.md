@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.2 — 2026-08-04
+
+- Fix parseru: jednoslužbové vyúčtování (jen jedno telefonní číslo/DSL na dokladu) — T-Mobile v tomto případě sekci „Přehled služeb po číslech" vůbec nevytiskne, parser vracel 0 položek a faktura se uložila bez `invoice_items`/`payments`. Nově fallback na řádek `{id} / {název služby}` ze „Souhrnný přehled služeb" + částky z hlavičky dokladu.
+
 ## 2.1.1 — 2026-07-22
 
 - Parser: podpora dokladů **smluvní pokuty** (`F-<číslo>.pdf`, „Vyúčtování smluvní pokuty") — období z DUZP, částka bez DPH, přiřazení službě z tabulky Účtované položky

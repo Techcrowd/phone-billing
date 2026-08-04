@@ -70,3 +70,34 @@ Celkem za služby bez DPH130,00 Kč`;
     expect(r.items[0].phoneNumber).toBe('604413020');
   });
 });
+
+describe('parseTMobileText — jednoslužbové vyúčtování (bez sekce "Přehled služeb po číslech")', () => {
+  it('parses invoice that has only one service and no per-number breakdown section', () => {
+    const text = `Vyúčtování služeb
+za období 6.6. - 5.7.2026
+Daňový doklad číslo                                        2431063126
+Částka k úhradě                                             505,65 Kč
+604566254 / Next neomezeně XL
+Účtované položky (detail viz Souhrnný přehled služeb)
+Celkem za služby bez DPH                                                                       417,89 Kč
+    Základ pro DPH (21%)                                                                         417,89 Kč
+    DPH (21%)                                                                                     87,76 Kč
+Celkem za služby včetně DPH                                                                    505,65 Kč
+Souhrnný přehled služeb
+za období 6.6. - 5.7.2026
+604566254 / Next neomezeně XL
+Celkem za služby bez DPH                                                             417,89 Kč`;
+    const r = parseTMobileText(text);
+    expect(r.success).toBe(true);
+    expect(r.docNumber).toBe('2431063126');
+    expect(r.period).toBe('2026-07');
+    expect(r.totalAmount).toBe(505.65);
+    expect(r.totalNoDph).toBe(417.89);
+    expect(r.items).toHaveLength(1);
+    expect(r.items[0].phoneNumber).toBe('604566254');
+    expect(r.items[0].serviceName).toBe('Next neomezeně XL');
+    expect(r.items[0].amountNoDph).toBe(417.89);
+    expect(r.items[0].amountWithDph).toBe(505.65);
+    expect(r.items[0].amountNonDph).toBe(0);
+  });
+});

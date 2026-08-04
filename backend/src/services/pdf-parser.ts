@@ -82,6 +82,31 @@ export function parseTMobileText(text: string): ParseResult {
   // Najdi sekci "Přehled služeb po číslech"
   const detailStart = text.indexOf('Přehled služeb po číslech');
   if (detailStart === -1) {
+    // Jednoslužbové vyúčtování — T-Mobile v tomto případě sekci "Přehled služeb
+    // po číslech" vůbec nevytiskne (nemá smysl rozepisovat jedinou službu),
+    // doklad obsahuje jen "Souhrnný přehled služeb" s jedním řádkem "{id} / {název}".
+    // Celkové částky z hlavičky dokladu jsou v tomto případě částkami té jedné služby.
+    const singleServiceMatch = text.match(/^(\d{9}|DSL\d+|LIC\d+|TV\d+)\s*\/\s*(.+)$/m);
+    if (singleServiceMatch) {
+      const amountNonDph = Math.max(0, Math.round((totalAmount - totalNoDph * (1 + dphRate)) * 100) / 100);
+      return {
+        success: true,
+        items: [{
+          phoneNumber: singleServiceMatch[1],
+          serviceName: singleServiceMatch[2].trim(),
+          amountNoDph: totalNoDph,
+          amountNonDph,
+          amountWithDph: totalAmount
+        }],
+        totalAmount,
+        totalNoDph,
+        dphRate,
+        period,
+        periodText,
+        docNumber,
+        rawText: text
+      };
+    }
     return {
       success: false,
       items: [],
