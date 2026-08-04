@@ -59,6 +59,7 @@ describe('Services API', () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ id: 1, identifier: '123456789' }] })
         .mockResolvedValueOnce({ rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{ invoice_id: 5 }] })
         .mockResolvedValueOnce({
           rows: [{ id: 1, identifier: '123456789', label: 'Novak', group_id: 2, group_name: 'HR' }],
         });
@@ -66,6 +67,23 @@ describe('Services API', () => {
       const res = await request(app).put('/api/services/1').send({ group_id: 2 });
       expect(res.status).toBe(200);
       expect(res.body.group_name).toBe('HR');
+    });
+
+    it('regenerates payments of affected invoices when group changes', async () => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [{ id: 1, identifier: '123456789' }] })
+        .mockResolvedValueOnce({ rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{ invoice_id: 5 }, { invoice_id: 6 }] })
+        .mockResolvedValueOnce({
+          rows: [{ id: 1, identifier: '123456789', label: 'Novak', group_id: 2, group_name: 'HR' }],
+        });
+
+      const res = await request(app).put('/api/services/1').send({ group_id: 2 });
+      expect(res.status).toBe(200);
+      expect(mockPool.connect).toHaveBeenCalled();
+      const clientQueries = mockClient.query.mock.calls.map((c: any[]) => c[0]);
+      expect(clientQueries).toContain('BEGIN');
+      expect(clientQueries).toContain('COMMIT');
     });
 
     it('updates service label', async () => {
@@ -85,6 +103,7 @@ describe('Services API', () => {
       mockPool.query
         .mockResolvedValueOnce({ rows: [{ id: 1, identifier: '123456789' }] })
         .mockResolvedValueOnce({ rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({
           rows: [{ id: 1, identifier: '123456789', label: 'Novak', group_id: null, group_name: null }],
         });

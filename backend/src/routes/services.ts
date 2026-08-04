@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import pool from '../db.js';
+import { regenerateInvoicePayments } from '../services/payments.js';
 
 // FINDING-009: Input validation schema
 const updateServiceSchema = z.object({
@@ -49,6 +50,27 @@ router.put('/:id', async (req, res) => {
   if (updates.length > 0) {
     params.push(id);
     await pool.query(`UPDATE services SET ${updates.join(', ')} WHERE id = $${paramIdx}`, params);
+  }
+
+  // Změna fakturační skupiny ovlivňuje platby už naimportovaných faktur —
+  // bez přepočtu by nová/přeřazená skupina v přehledu plateb chyběla.
+  if (group_id !== undefined) {
+    const { rows: affected } = await pool.query(
+      'SELECT DISTINCT invoice_id FROM invoice_items WHERE service_id = $1', [id]
+    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const row of affected) {
+        await regenerateInvoicePayments(client, row.invoice_id);
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
   }
 
   const { rows } = await pool.query(`

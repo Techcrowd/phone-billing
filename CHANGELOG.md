@@ -3,6 +3,7 @@
 ## 2.1.2 — 2026-08-04
 
 - Fix parseru: jednoslužbové vyúčtování (jen jedno telefonní číslo/DSL na dokladu) — T-Mobile v tomto případě sekci „Přehled služeb po číslech" vůbec nevytiskne, parser vracel 0 položek a faktura se uložila bez `invoice_items`/`payments`. Nově fallback na řádek `{id} / {název služby}` ze „Souhrnný přehled služeb" + částky z hlavičky dokladu.
+- Fix: přiřazení/změna fakturační skupiny u služby (`PUT /api/services/:id`) teď přepočítá `payments` u všech faktur, kde se služba vyskytuje — dřív platby zůstaly „zamrzlé" ve stavu skupin z doby uploadu a nově vytvořená/přeřazená skupina se v přehledu plateb neobjevila, dokud se faktura ručně znovu nenahrála. Sdílená logika přesunuta do `services/payments.ts` (`regenerateInvoicePayments`), použita i v `POST /api/invoices/upload` a `POST /api/payments/generate`; navíc maže nezaplacené platby skupin, které už u faktury nemají žádnou položku.
 
 ## 2.1.1 — 2026-07-22
 

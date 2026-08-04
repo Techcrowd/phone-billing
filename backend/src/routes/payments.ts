@@ -3,6 +3,7 @@ import fs from 'fs';
 import pool from '../db.js';
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
+import { regenerateInvoicePayments } from '../services/payments.js';
 
 const router = Router();
 
@@ -29,14 +30,7 @@ router.post('/generate', async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    for (const gt of groupTotals) {
-      await client.query(
-        `INSERT INTO payments (invoice_id, group_id, amount, amount_without_vat)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (invoice_id, group_id) DO UPDATE SET amount = EXCLUDED.amount, amount_without_vat = EXCLUDED.amount_without_vat`,
-        [invoice_id, gt.group_id, gt.total, gt.total_no_vat]
-      );
-    }
+    await regenerateInvoicePayments(client, invoice_id);
     await client.query('COMMIT');
   } catch (e) {
     await client.query('ROLLBACK');

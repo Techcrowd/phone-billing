@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import pool from '../db.js';
 import { parseTMobilePDF, type ParseResult } from '../services/pdf-parser.js';
 import { aiParsePDF } from '../services/ai-parser.js';
+import { regenerateInvoicePayments } from '../services/payments.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
@@ -66,25 +67,6 @@ async function insertParsedItems(client: any, invoiceId: number, items: ParseRes
   }
 }
 
-async function autoGeneratePayments(client: any, invoiceId: number) {
-  const { rows } = await client.query(`
-    SELECT s.group_id, SUM(ii.amount_with_vat) as total, SUM(ii.amount_without_vat) as total_no_vat
-    FROM invoice_items ii
-    JOIN services s ON s.id = ii.service_id
-    WHERE ii.invoice_id = $1 AND s.group_id IS NOT NULL
-    GROUP BY s.group_id
-  `, [invoiceId]);
-
-  for (const gt of rows) {
-    await client.query(
-      `INSERT INTO payments (invoice_id, group_id, amount, amount_without_vat)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (invoice_id, group_id) DO UPDATE SET amount = EXCLUDED.amount, amount_without_vat = EXCLUDED.amount_without_vat`,
-      [invoiceId, gt.group_id, gt.total, gt.total_no_vat]
-    );
-  }
-}
-
 async function parseWithFallback(filePath: string): Promise<ParseResult> {
   const result = await parseTMobilePDF(filePath);
   if (result.items.length === 0 && process.env.ANTHROPIC_API_KEY) {
@@ -137,7 +119,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     );
     const invoiceId = rows[0].id;
     await insertParsedItems(client, invoiceId, parseResult.items);
-    await autoGeneratePayments(client, invoiceId);
+    await regenerateInvoicePayments(client, invoiceId);
     await client.query('COMMIT');
 
     const { rows: inv } = await pool.query('SELECT * FROM invoices WHERE id = $1', [invoiceId]);
