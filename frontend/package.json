@@ -13,19 +13,19 @@
   "private": true,
   "packageManager": "npm@10.9.2",
   "dependencies": {
-    "@angular/common": "^21.2.19",
-    "@angular/compiler": "^21.2.19",
-    "@angular/core": "^21.2.19",
-    "@angular/forms": "^21.2.19",
-    "@angular/platform-browser": "^21.2.19",
-    "@angular/router": "^21.2.19",
+    "@angular/common": "^21.2.26",
+    "@angular/compiler": "^21.2.26",
+    "@angular/core": "^21.2.26",
+    "@angular/forms": "^21.2.26",
+    "@angular/platform-browser": "^21.2.26",
+    "@angular/router": "^21.2.26",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.19",
-    "@angular/cli": "^21.2.19",
-    "@angular/compiler-cli": "^21.2.19",
+    "@angular/build": "^21.2.31",
+    "@angular/cli": "^21.2.31",
+    "@angular/compiler-cli": "^21.2.26",
     "@tailwindcss/postcss": "^4.1.18",
     "angular-eslint": "21.2.0",
     "eslint": "^9.39.2",
@@ -35,10 +35,5 @@
     "tailwindcss": "^4.1.18",
     "typescript": "~5.9.2",
     "typescript-eslint": "8.50.1"
-  },
-  "overrides": {
-    "undici": "^8.10.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "@hono/node-server": "^2.1.0"
   }
 }

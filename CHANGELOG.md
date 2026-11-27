@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.1.3 — 2026-11-27
+
+- Security: dependency refresh — backend (proxy-addr, body-parser, multer 2.x, zod 4.6, qs, ip-address; vitest 3 → 4.1, vite 7.3.8 / tinypool), frontend Angular 21.2.26 / CLI 21.2.31 (router/core/common/compiler advisories, piscina, undici, hono, fast-uri, @modelcontextprotocol/sdk). Dropped the now-unneeded frontend `overrides`. Remaining: dev-only `glob`/`minimatch` inside Angular CLI (needs CLI 22).
+- CI: gitleaks job gets `pull-requests: read` (the scan 403'd on pull requests).
+
 ## 2.1.2 — 2026-08-04
 
 - Fix parseru: jednoslužbové vyúčtování (jen jedno telefonní číslo/DSL na dokladu) — T-Mobile v tomto případě sekci „Přehled služeb po číslech" vůbec nevytiskne, parser vracel 0 položek a faktura se uložila bez `invoice_items`/`payments`. Nově fallback na řádek `{id} / {název služby}` ze „Souhrnný přehled služeb" + částky z hlavičky dokladu.
