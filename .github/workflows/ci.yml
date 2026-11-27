@@ -44,6 +44,9 @@ jobs:
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read # gitleaks-action lists PR commits; without it the scan 403s on pull_request
     steps:
       - uses: actions/checkout@v4
         with:
